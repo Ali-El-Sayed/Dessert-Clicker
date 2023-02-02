@@ -1,19 +1,3 @@
-/*
- * Copyright 2019, The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.example.android.dessertclicker
 
 import android.content.ActivityNotFoundException
@@ -28,6 +12,10 @@ import androidx.core.content.ContextCompat.startActivity
 import androidx.databinding.DataBindingUtil
 import com.example.android.dessertclicker.databinding.ActivityMainBinding
 import timber.log.Timber
+
+const val KEY_REVENUE = "revenue_key"
+const val KEY_DESSERT_SOLD = "dessert_sold_key"
+const val KEY_TIMER_SECONDS = "timer_seconds_key"
 
 class MainActivity : AppCompatActivity() {
 
@@ -79,7 +67,15 @@ class MainActivity : AppCompatActivity() {
             onDessertClicked()
         }
 
-        dessertTimer = DessertTimer()
+        dessertTimer = DessertTimer(this.lifecycle)
+
+        // Restore Previous State
+        if (savedInstanceState != null) {
+            revenue = savedInstanceState.getInt(KEY_REVENUE, 0)
+            dessertsSold = savedInstanceState.getInt(KEY_DESSERT_SOLD, 0)
+            dessertTimer.secondsCount = savedInstanceState.getInt(KEY_TIMER_SECONDS, 0)
+            showCurrentDessert()
+        }
 
         // Set the TextViews to the right values
         binding.revenue = revenue
@@ -91,8 +87,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-
-        dessertTimer.startTimer()
+//        dessertTimer.startTimer()
 
         Timber.i("onStart Called")
     }
@@ -109,11 +104,22 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-
-        dessertTimer.stopTimer()
+//        dessertTimer.stopTimer()
 
         Timber.i("onStop Called")
 
+    }
+
+    // Generally you should store far less than 100k
+    // otherwise you risk crashing your app with the
+    // TransactionTooLargeException error.
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        Timber.i("onSaveInstanceState Called")
+
+        outState.putInt(KEY_REVENUE, revenue)
+        outState.putInt(KEY_DESSERT_SOLD, dessertsSold)
+        outState.putInt(KEY_TIMER_SECONDS, dessertTimer.secondsCount)
     }
 
     override fun onDestroy() {
@@ -147,16 +153,14 @@ class MainActivity : AppCompatActivity() {
      */
     private fun showCurrentDessert() {
         var newDessert = allDesserts[0]
-        for (dessert in allDesserts) {
-            if (dessertsSold >= dessert.startProductionAmount) {
+        // The list of desserts is sorted by startProductionAmount. As you sell more desserts,
+        // you'll start producing more expensive desserts as determined by startProductionAmount
+        // We know to break as soon as we see a dessert who's "startProductionAmount" is greater
+        // than the amount sold.
+        for (dessert in allDesserts)
+            if (dessertsSold >= dessert.startProductionAmount)
                 newDessert = dessert
-            }
-            // The list of desserts is sorted by startProductionAmount. As you sell more desserts,
-            // you'll start producing more expensive desserts as determined by startProductionAmount
-            // We know to break as soon as we see a dessert who's "startProductionAmount" is greater
-            // than the amount sold.
             else break
-        }
 
         // If the new dessert is actually different than the current dessert, update the image
         if (newDessert != currentDessert) {
@@ -171,14 +175,12 @@ class MainActivity : AppCompatActivity() {
     private fun onShare() {
         val shareIntent = ShareCompat.IntentBuilder.from(this)
             .setText(getString(R.string.share_text, dessertsSold, revenue))
-            .setType("text/plain")
-            .intent
+            .setType("text/plain").intent
         try {
             startActivity(shareIntent)
         } catch (ex: ActivityNotFoundException) {
             Toast.makeText(
-                this, getString(R.string.sharing_not_available),
-                Toast.LENGTH_LONG
+                this, getString(R.string.sharing_not_available), Toast.LENGTH_LONG
             ).show()
         }
     }

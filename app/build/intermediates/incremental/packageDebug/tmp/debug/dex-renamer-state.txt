@@ -1,4 +1,4 @@
-#Thu Feb 02 18:40:23 EET 2023
+#Thu Feb 02 21:13:15 EET 2023
 base.0=D\:\\Kotlin\\DessertClicker\\app\\build\\intermediates\\dex\\debug\\mergeDexDebug\\classes.dex
 path.0=classes.dex
 renamed.0=classes.dex
